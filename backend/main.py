@@ -1,7 +1,7 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import auth
+from routers import auth, profile
 
 app = FastAPI(title="아기 케어 앱 API")
 
@@ -16,6 +16,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(profile.router)
 
 
 @app.get("/")

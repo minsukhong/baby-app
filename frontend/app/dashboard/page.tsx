@@ -1,6 +1,42 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getMyProfile } from "@/lib/profile";
+import { getToken } from "@/lib/auth";
+
 export default function DashboardPage() {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    getMyProfile()
+      .then((profile) => {
+        if (!profile) {
+          router.replace("/onboarding");
+        } else {
+          setChecking(false);
+        }
+      })
+      .catch(() => {
+        router.replace("/login");
+      });
+  }, [router]);
+
+  if (checking) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-400 text-sm">불러오는 중...</div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">

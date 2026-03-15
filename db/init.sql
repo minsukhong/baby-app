@@ -25,3 +25,17 @@ VALUES (
     'local'
 )
 ON CONFLICT (username) DO NOTHING;
+
+-- profiles 테이블
+CREATE TABLE IF NOT EXISTS profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id),
+    birth_status VARCHAR(20) NOT NULL,
+    baby_date DATE NOT NULL,
+    baby_count VARCHAR(20) NOT NULL,
+    birth_order VARCHAR(20) NOT NULL,
+    region VARCHAR(100) NOT NULL,
+    job_status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
