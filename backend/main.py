@@ -26,3 +26,16 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/db-test")
+def db_test():
+    try:
+        from database import engine
+        with engine.connect() as conn:
+            from sqlalchemy import text
+            result = conn.execute(text("SELECT COUNT(*) FROM users"))
+            count = result.scalar()
+            return {"status": "ok", "users_count": count}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
