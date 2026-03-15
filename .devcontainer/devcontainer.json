@@ -1,0 +1,29 @@
+{
+  "name": "baby-app",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "frontend",
+  "workspaceFolder": "/app",
+
+  // VSCode 확장 프로그램 자동 설치
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker",
+        "ckolkman.vscode-postgres"
+      ]
+    }
+  },
+
+  // 컨테이너 실행 후 포트 자동 포워딩
+  "forwardPorts": [3000, 8000, 5432],
+  "portsAttributes": {
+    "3000": { "label": "Frontend (Next.js)" },
+    "8000": { "label": "Backend (FastAPI)" },
+    "5432": { "label": "Database (PostgreSQL)" }
+  }
+}
