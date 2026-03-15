@@ -4,7 +4,6 @@
   "service": "frontend",
   "workspaceFolder": "/app",
 
-  // VSCode 확장 프로그램 자동 설치
   "customizations": {
     "vscode": {
       "extensions": [
@@ -19,7 +18,6 @@
     }
   },
 
-  // 컨테이너 실행 후 포트 자동 포워딩
   "forwardPorts": [3000, 8000, 5432],
   "portsAttributes": {
     "3000": { "label": "Frontend (Next.js)" },

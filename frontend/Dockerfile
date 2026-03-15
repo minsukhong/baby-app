@@ -1,14 +1,12 @@
-FROM node:20-alpine
+FROM node:20
 
 WORKDIR /app
 
-# 패키지 설치
 COPY package*.json ./
 RUN npm install
 
-# 소스 복사
 COPY . .
 
-# 개발 서버 실행 (포트 3000)
-EXPOSE 3000
-CMD ["npm", "run", "dev"]
+# VSCode가 접속할 수 있도록 대기 상태 유지
+# 서버 실행은 VSCode 터미널에서 직접: npm run dev
+CMD ["sleep", "infinity"]
