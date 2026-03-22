@@ -119,9 +119,11 @@ class BenefitOut(BaseModel):
 
 
 class SummaryOut(BaseModel):
-    total_amount:       int   # 받을 수 있는 총 혜택 금액 (확정+조건부)
+    total_amount:       int   # 잠금 제외 총액 (확정+조건부)
+    total_all_amount:   int   # 잠금 포함 전체 총액
     confirmed_amount:   int   # 소득조건 없는 확정 금액
     conditional_amount: int   # 소득조건 있는 조건부 금액
+    locked_amount:      int   # 잠긴 혜택 금액
     achieved_amount:    int   # 신청 완료 금액
     remaining_amount:   int   # 잔여 금액
     achievement_rate:   float # 달성률 (확정금액 기준, 100% 초과 가능)
@@ -271,7 +273,7 @@ def get_my_summary(
         for ub in db.query(UserBenefit).filter(UserBenefit.user_id == current_user.id).all()
     }
 
-    confirmed_amount = conditional_amount = achieved_amount = remaining_amount = 0
+    confirmed_amount = conditional_amount = locked_amount = achieved_amount = remaining_amount = 0
     counts = {"available": 0, "applied": 0, "completed": 0, "locked": 0}
 
     for b in benefits:
@@ -280,11 +282,12 @@ def get_my_summary(
         amount = calc_personalized_amount(b, profile)
         has_income_cond = bool(b.income_max_ratio)
 
-        if status != "locked":
-            if has_income_cond:
-                conditional_amount += amount
-            else:
-                confirmed_amount += amount
+        if status == "locked":
+            locked_amount += amount
+        elif has_income_cond:
+            conditional_amount += amount
+        else:
+            confirmed_amount += amount
 
         if status in ("applied", "completed"):
             achieved_amount += amount
@@ -293,14 +296,17 @@ def get_my_summary(
 
         counts[status] = counts.get(status, 0) + 1
 
-    total_amount = confirmed_amount + conditional_amount
+    total_amount     = confirmed_amount + conditional_amount
+    total_all_amount = total_amount + locked_amount
     # 달성률은 확정금액 기준 (100% 초과 가능)
     achievement_rate = round((achieved_amount / confirmed_amount * 100), 1) if confirmed_amount > 0 else 0.0
 
     return SummaryOut(
         total_amount=total_amount,
+        total_all_amount=total_all_amount,
         confirmed_amount=confirmed_amount,
         conditional_amount=conditional_amount,
+        locked_amount=locked_amount,
         achieved_amount=achieved_amount,
         remaining_amount=remaining_amount,
         achievement_rate=achievement_rate,
