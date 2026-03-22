@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, CSSProperties } from "react";
 import { BenefitItem, applyBenefit, completeBenefit, formatAmountFull } from "@/lib/benefits";
 
 const CATEGORY_CONFIG: Record<string, { gradient: string; emoji: string; label: string }> = {
@@ -19,12 +19,15 @@ const CONFETTI_COLORS = [
 
 interface ConfettiPiece {
   id: number;
-  x: number;
+  tx: number;
+  ty: number;
+  rot: string;
   color: string;
-  size: number;
+  width: number;
+  height: number;
+  borderRadius: string;
   delay: number;
   duration: number;
-  shape: "rect" | "circle";
 }
 
 function Confetti({ active }: { active: boolean }) {
@@ -32,37 +35,58 @@ function Confetti({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (!active) return;
-    const newPieces: ConfettiPiece[] = Array.from({ length: 70 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-      size: 6 + Math.random() * 8,
-      delay: Math.random() * 0.8,
-      duration: 1.5 + Math.random() * 1.2,
-      shape: Math.random() > 0.5 ? "rect" : "circle",
-    }));
+    const newPieces: ConfettiPiece[] = Array.from({ length: 64 }, (_, i) => {
+      const angle = (i / 64) * 360 + (Math.random() - 0.5) * 15;
+      const distance = 90 + Math.random() * 170;
+      const rad = (angle * Math.PI) / 180;
+      const isCircle = Math.random() > 0.5;
+      const size = 6 + Math.random() * 8;
+      return {
+        id: i,
+        tx: Math.cos(rad) * distance,
+        ty: Math.sin(rad) * distance,
+        rot: `${Math.random() * 540 - 270}deg`,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        width: size,
+        height: isCircle ? size : size * 0.45,
+        borderRadius: isCircle ? "50%" : "2px",
+        delay: Math.random() * 0.05,
+        duration: 0.35 + Math.random() * 0.25,
+      };
+    });
     setPieces(newPieces);
-    const t = setTimeout(() => setPieces([]), 3500);
+    const t = setTimeout(() => setPieces([]), 2200);
     return () => clearTimeout(t);
   }, [active]);
 
   if (!pieces.length) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
+    /* 뷰포트 중앙(카드 위치)에 고정, overflow visible로 바깥으로 퍼져나감 */
+    <div
+      className="pointer-events-none"
+      style={{ position: "fixed", left: "50%", top: "50%", zIndex: 60 }}
+    >
       {pieces.map((p) => (
         <div
           key={p.id}
-          className="absolute top-0 animate-confetti"
           style={{
-            left: `${p.x}%`,
-            width: p.shape === "rect" ? p.size : p.size,
-            height: p.shape === "rect" ? p.size * 0.5 : p.size,
-            borderRadius: p.shape === "circle" ? "50%" : "2px",
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: p.width,
+            height: p.height,
+            borderRadius: p.borderRadius,
             backgroundColor: p.color,
+            animationName: "confetti-burst",
+            animationTimingFunction: "ease-out",
+            animationFillMode: "forwards",
             animationDelay: `${p.delay}s`,
             animationDuration: `${p.duration}s`,
-          }}
+            "--tx": `${p.tx}px`,
+            "--ty": `${p.ty}px`,
+            "--rot": p.rot,
+          } as CSSProperties}
         />
       ))}
     </div>
@@ -76,9 +100,9 @@ interface Props {
 }
 
 export default function BenefitActionModal({ benefit, onClose, onStatusChange }: Props) {
-  const [flipped, setFlipped]     = useState(false);
-  const [loading, setLoading]     = useState(false);
-  const [confetti, setConfetti]   = useState(false);
+  const [flipped, setFlipped]   = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [confetti, setConfetti] = useState(false);
 
   const cat = CATEGORY_CONFIG[benefit.category] ?? DEFAULT_CAT;
 
@@ -87,22 +111,18 @@ export default function BenefitActionModal({ benefit, onClose, onStatusChange }:
     try {
       await fn();
       setConfetti(true);
-      setTimeout(() => {
-        onStatusChange();
-        onClose();
-      }, 1800);
+      setTimeout(() => { onStatusChange(); onClose(); }, 1800);
     } finally {
       setLoading(false);
     }
   };
 
-  /* ── 공통 뒤집기 버튼 (앞면/뒷면 동일 위치/디자인) ── */
+  /* 앞면/뒷면 동일 위치·동일 디자인 뒤집기 버튼 */
   const FlipBtn = ({ targetFace }: { targetFace: boolean }) => (
     <button
       onClick={() => setFlipped(targetFace)}
       className="absolute top-4 right-12 w-8 h-8 rounded-full bg-white/25 border border-white/50
                  flex items-center justify-center text-white hover:bg-white/40 transition-colors z-10"
-      title={targetFace ? "뒷면 보기" : "앞면으로"}
     >
       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
         <path d="M1 4v6h6M23 20v-6h-6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -121,54 +141,48 @@ export default function BenefitActionModal({ benefit, onClose, onStatusChange }:
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-5"
         onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
-        {/* 홀로그래픽 테두리 래퍼 */}
-        <div
-          className="w-full max-w-sm rounded-3xl p-[2px]"
-          style={{
-            background: "linear-gradient(135deg, #818cf8, #f472b6, #34d399, #fbbf24, #818cf8)",
-            backgroundSize: "300% 300%",
-            animation: "card-shimmer 3s ease-in-out infinite",
-          }}
-        >
+        {/* 카드 래퍼 */}
+        <div className="w-full max-w-sm">
           {/* 3D 컨테이너 */}
           <div className="w-full" style={{ perspective: "1200px" }}>
+            {/* border-glow를 회전 컨테이너에 직접 적용 → 카드와 함께 돌아감 */}
             <div
-              className="relative transition-transform duration-500 w-full"
+              className="relative transition-transform duration-500 w-full rounded-3xl"
               style={{
                 transformStyle: "preserve-3d",
+                WebkitTransformStyle: "preserve-3d",
                 transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
                 height: "540px",
+                animation: "border-glow 3s ease-in-out infinite",
               }}
             >
 
               {/* ══════════════ 앞면 ══════════════ */}
               <div
-                className="absolute inset-0 rounded-3xl overflow-hidden flex flex-col"
-                style={{ backfaceVisibility: "hidden" }}
+                className="absolute inset-0 rounded-3xl overflow-hidden flex flex-col shadow-2xl"
+                style={{
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                }}
               >
                 {/* 상단 그라데이션 */}
                 <div className={`bg-gradient-to-br ${cat.gradient} px-6 pt-6 pb-5 flex-shrink-0 relative`}>
-                  {/* 코너 장식 */}
                   <span className="absolute top-3 left-4 text-white/30 text-xs font-bold select-none">✦</span>
                   <span className="absolute bottom-3 right-4 text-white/30 text-xs font-bold select-none">✦</span>
 
-                  {/* 닫기 + 뒤집기 */}
                   <FlipBtn targetFace={true} />
                   <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white text-xl leading-none z-10">✕</button>
 
-                  {/* 카테고리 */}
                   <div className="flex items-center gap-1 mb-3">
                     <span className="text-xs font-bold text-white/70 tracking-widest uppercase">
                       {cat.emoji} {cat.label}
                     </span>
                   </div>
 
-                  {/* 혜택명 */}
                   <h2 className="text-lg font-extrabold text-white leading-tight mb-4">
                     {benefit.name}
                   </h2>
 
-                  {/* 금액 글로우 박스 */}
                   {benefit.representative_amount != null && benefit.representative_amount > 0 && (
                     <div className="relative bg-white/15 border border-white/30 rounded-2xl px-5 py-4 shadow-inner">
                       <p className="text-xs text-white/60 mb-1">내가 받을 금액</p>
@@ -182,34 +196,23 @@ export default function BenefitActionModal({ benefit, onClose, onStatusChange }:
 
                 {/* 하단 흰 영역 */}
                 <div className="bg-white flex-1 flex flex-col px-6 py-5 overflow-y-auto">
-                  {/* 배지 */}
                   <div className="flex flex-wrap gap-2 mb-4">
                     {benefit.region === "전국" && !benefit.income_max_ratio && (
-                      <span className="bg-green-50 text-green-600 text-xs font-semibold px-3 py-1 rounded-full border border-green-200">
-                        ✅ 누구나 신청
-                      </span>
+                      <span className="bg-green-50 text-green-600 text-xs font-semibold px-3 py-1 rounded-full border border-green-200">✅ 누구나 신청</span>
                     )}
                     {benefit.region !== "전국" && (
-                      <span className="bg-blue-50 text-blue-600 text-xs font-semibold px-3 py-1 rounded-full border border-blue-200">
-                        📍 {benefit.region}
-                      </span>
+                      <span className="bg-blue-50 text-blue-600 text-xs font-semibold px-3 py-1 rounded-full border border-blue-200">📍 {benefit.region}</span>
                     )}
                     {benefit.income_max_ratio && (
-                      <span className="bg-orange-50 text-orange-500 text-xs font-semibold px-3 py-1 rounded-full border border-orange-200">
-                        💡 소득 조건 있음
-                      </span>
+                      <span className="bg-orange-50 text-orange-500 text-xs font-semibold px-3 py-1 rounded-full border border-orange-200">💡 소득 조건 있음</span>
                     )}
                     {benefit.payment_type && (
-                      <span className="bg-gray-50 text-gray-500 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">
-                        💳 {benefit.payment_type}
-                      </span>
+                      <span className="bg-gray-50 text-gray-500 text-xs font-semibold px-3 py-1 rounded-full border border-gray-200">💳 {benefit.payment_type}</span>
                     )}
                   </div>
 
                   {benefit.amount_description && (
-                    <p className="text-sm text-gray-600 leading-relaxed mb-4">
-                      {benefit.amount_description}
-                    </p>
+                    <p className="text-sm text-gray-600 leading-relaxed mb-4">{benefit.amount_description}</p>
                   )}
 
                   {benefit.urgency_message && (
@@ -220,7 +223,6 @@ export default function BenefitActionModal({ benefit, onClose, onStatusChange }:
 
                   <div className="flex-1" />
 
-                  {/* 액션 */}
                   <div className="space-y-2 mt-2">
                     {benefit.status === "available" && (
                       <button
@@ -251,16 +253,18 @@ export default function BenefitActionModal({ benefit, onClose, onStatusChange }:
 
               {/* ══════════════ 뒷면 ══════════════ */}
               <div
-                className="absolute inset-0 rounded-3xl overflow-hidden flex flex-col"
-                style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                className="absolute inset-0 rounded-3xl overflow-hidden flex flex-col shadow-2xl"
+                style={{
+                  backfaceVisibility: "hidden",
+                  WebkitBackfaceVisibility: "hidden",
+                  transform: "rotateY(180deg)",
+                }}
               >
-                {/* 뒷면 헤더 (동일 그라데이션) */}
+                {/* 뒷면 헤더 */}
                 <div className={`bg-gradient-to-br ${cat.gradient} px-6 pt-6 pb-4 flex-shrink-0 relative`}>
-                  {/* 코너 장식 */}
                   <span className="absolute top-3 left-4 text-white/30 text-xs font-bold select-none">✦</span>
                   <span className="absolute bottom-3 right-4 text-white/30 text-xs font-bold select-none">✦</span>
 
-                  {/* 뒤집기 (앞면으로) + 닫기 — 동일 위치 */}
                   <FlipBtn targetFace={false} />
                   <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white text-xl leading-none z-10">✕</button>
 
@@ -268,13 +272,11 @@ export default function BenefitActionModal({ benefit, onClose, onStatusChange }:
                   <p className="text-sm font-bold text-white leading-snug">{benefit.name}</p>
                 </div>
 
-                {/* 뒷면 내용 — 다이아몬드 패턴 배경 */}
+                {/* 뒷면 내용 */}
                 <div
                   className="flex-1 overflow-y-auto px-6 py-5 space-y-4"
                   style={{
-                    background: `
-                      radial-gradient(circle at 1px 1px, rgba(99,102,241,0.08) 1px, transparent 0)
-                    `,
+                    background: "radial-gradient(circle at 1px 1px, rgba(99,102,241,0.08) 1px, transparent 0)",
                     backgroundSize: "24px 24px",
                     backgroundColor: "#fafafa",
                   }}
@@ -285,14 +287,12 @@ export default function BenefitActionModal({ benefit, onClose, onStatusChange }:
                       <p className="text-sm text-gray-700 leading-relaxed">{benefit.amount_description}</p>
                     </div>
                   )}
-
                   {benefit.application_deadline && (
                     <div>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">🗓 신청 기한</p>
                       <p className="text-sm text-gray-700">{benefit.application_deadline}</p>
                     </div>
                   )}
-
                   {benefit.apply_within_days && (
                     <div>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">⏰ 신청 기한</p>
@@ -301,21 +301,18 @@ export default function BenefitActionModal({ benefit, onClose, onStatusChange }:
                       </p>
                     </div>
                   )}
-
                   {benefit.income_condition && (
                     <div>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">💡 소득 조건</p>
                       <p className="text-sm text-gray-700 leading-relaxed">{benefit.income_condition}</p>
                     </div>
                   )}
-
                   {benefit.payment_type && (
                     <div>
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5">💳 지급 방식</p>
                       <p className="text-sm text-gray-700">{benefit.payment_type}</p>
                     </div>
                   )}
-
                   {benefit.urgency_message && (
                     <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">
                       <p className="text-xs font-bold text-rose-400 uppercase tracking-widest mb-1">⚡ 알림</p>

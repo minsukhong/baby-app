@@ -57,29 +57,14 @@
   }
 }
 
-@keyframes confetti-fall {
-  0%   { transform: translateY(-10px) rotate(0deg);   opacity: 1; }
-  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+@keyframes confetti-burst {
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(0.2); opacity: 0; }
 }
 
-@keyframes card-shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
-}
-
-.animate-confetti {
-  animation: confetti-fall linear forwards;
-}
-
-.card-shimmer-border {
-  background: linear-gradient(
-    105deg,
-    transparent 20%,
-    rgba(255,255,255,0.6) 40%,
-    rgba(255,255,255,0.8) 50%,
-    rgba(255,255,255,0.6) 60%,
-    transparent 80%
-  );
-  background-size: 200% 100%;
-  animation: card-shimmer 2.5s ease-in-out infinite;
+@keyframes border-glow {
+  0%, 100% { box-shadow: 0 0 0 2px #818cf8, 0 0 18px rgba(129,140,248,0.35); }
+  33%       { box-shadow: 0 0 0 2px #f472b6, 0 0 18px rgba(244,114,182,0.35); }
+  66%       { box-shadow: 0 0 0 2px #34d399, 0 0 18px rgba(52,211,153,0.35); }
 }
