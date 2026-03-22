@@ -44,23 +44,41 @@ def normalize_region(region: str) -> str:
 
 
 def calc_personalized_amount(benefit: Benefit, profile: Profile) -> int:
-    """프로필(단태아/다태아, 첫째/둘째이상) 기반으로 실제 혜택 금액 계산"""
-    is_multiple    = profile.baby_count in ("twins", "triplets_plus")
-    is_second_plus = profile.birth_order == "second_plus"
+    """프로필 기반 실제 혜택 금액 계산 — 4가지 유형 구분
 
-    # 1순위: 단태아/다태아 구분
-    if is_multiple and benefit.amount_multiple:
-        return benefit.amount_multiple
-    if not is_multiple and benefit.amount_single:
-        return benefit.amount_single
+    유형 1 (임신당): amount_single/multiple → 다태아 여부만 봄, 1회 지급
+    유형 2 (아이당 × 출생순서): amount_first/second_plus → 아이 수만큼 루프, 순서별 금액
+    유형 3 (아이당 × 동일금액): is_per_child=True → 아이 수 × representative_amount
+    유형 4 (가구/개인 고정): 나머지 → representative_amount 그대로
+    """
+    current  = profile.current_baby_count or 1   # 이번에 태어나는 아이 수
+    existing = profile.existing_children  or 0   # 기존 자녀 수
 
-    # 2순위: 첫째/둘째이상 구분
-    if is_second_plus and benefit.amount_second_plus:
-        return benefit.amount_second_plus
-    if not is_second_plus and benefit.amount_first:
-        return benefit.amount_first
+    # 유형 1: 임신당 지원 (다태아 여부로 1회 지급)
+    if benefit.amount_single or benefit.amount_multiple:
+        is_multiple = profile.baby_count in ("twins", "triplets_plus")
+        if is_multiple and benefit.amount_multiple:
+            return benefit.amount_multiple
+        if benefit.amount_single:
+            return benefit.amount_single
+        return benefit.representative_amount or 0
 
-    # 3순위: fallback
+    # 유형 2: 아이당 지원, 출생순서별 금액 다름
+    if benefit.amount_first or benefit.amount_second_plus:
+        total = 0
+        for i in range(current):
+            order = existing + i  # 0=첫째, 1+=둘째이상
+            if order == 0:
+                total += benefit.amount_first or benefit.amount_second_plus or benefit.representative_amount or 0
+            else:
+                total += benefit.amount_second_plus or benefit.amount_first or benefit.representative_amount or 0
+        return total
+
+    # 유형 3: 아이당 지원, 출생순서 무관 동일금액 (부모급여, 아동수당 등)
+    if benefit.is_per_child:
+        return (benefit.representative_amount or 0) * current
+
+    # 유형 4: 가구/개인 고정 (육아휴직, 전기요금 할인 등)
     return benefit.representative_amount or 0
 
 
