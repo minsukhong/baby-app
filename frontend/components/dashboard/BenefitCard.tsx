@@ -38,7 +38,9 @@ export default function BenefitCard({ benefit, onStatusChange }: Props) {
       )}
 
       <div className={`rounded-2xl border-2 p-4 transition-all ${
-        isLocked ? "border-gray-100 bg-gray-50 opacity-60" : "border-gray-100 bg-white shadow-sm"
+        isLocked              ? "border-gray-100 bg-gray-50 opacity-60" :
+        benefit.status === "completed" ? "border-emerald-200 bg-emerald-50 shadow-sm" :
+        "border-gray-100 bg-white shadow-sm"
       }`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -108,7 +110,7 @@ export default function BenefitCard({ benefit, onStatusChange }: Props) {
                   onClick={() => setShowModal(true)}
                   className="flex-1 py-2 rounded-xl bg-indigo-500 text-white text-xs font-semibold hover:bg-indigo-600 transition-colors"
                 >
-                  신청했어요 ✓
+                  혜택 확인
                 </button>
               </>
             )}
@@ -119,14 +121,14 @@ export default function BenefitCard({ benefit, onStatusChange }: Props) {
                   disabled={loading}
                   className="py-2 px-3 rounded-xl border-2 border-gray-200 text-xs font-medium text-gray-400 hover:bg-gray-50 disabled:opacity-40 transition-colors"
                 >
-                  취소
+                  신청 완료 ✓
                 </button>
                 <button
                   onClick={() => setShowModal(true)}
                   disabled={loading}
                   className="flex-1 py-2 rounded-xl bg-green-500 text-white text-xs font-semibold hover:bg-green-600 disabled:opacity-40 transition-colors"
                 >
-                  수령 완료 ✓
+                  수령완료 확정하기
                 </button>
               </>
             )}
