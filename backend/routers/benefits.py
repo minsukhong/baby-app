@@ -82,6 +82,35 @@ def calc_personalized_amount(benefit: Benefit, profile: Profile) -> int:
     return benefit.representative_amount or 0
 
 
+def is_profile_eligible(benefit: Benefit, profile: Profile) -> bool:
+    """프로필 조건(지역/직업/소득/기한만료)에 맞는지 확인.
+    타이밍 잠금(임신주차 미달, 출산 전/후 단계)은 체크하지 않음 →
+    total_all_amount 산정 시 프로필에 해당하지 않는 혜택을 제외하는 용도."""
+    # 직업 체크
+    job = profile.job_status
+    if job == "employed"      and not benefit.applies_to_employed:      return False
+    if job == "self_employed" and not benefit.applies_to_self_employed: return False
+    if job == "unemployed"    and not benefit.applies_to_unemployed:    return False
+
+    # 지역 체크
+    user_region = normalize_region(profile.region or "")
+    if benefit.region != "전국" and benefit.region != user_region:
+        return False
+
+    # 소득 체크
+    income_range = getattr(profile, "income_range", "unknown") or "unknown"
+    if not income_qualifies(income_range, benefit.income_max_ratio):
+        return False
+
+    # 신청 기한 만료 (출산 후인데 apply_within_days 초과)
+    if profile.birth_status != "pregnant" and benefit.apply_within_days and profile.baby_date:
+        days_since_birth = (date.today() - profile.baby_date).days
+        if days_since_birth > benefit.apply_within_days:
+            return False
+
+    return True
+
+
 def income_qualifies(profile_income_range: str, benefit_income_max_ratio: Optional[int]) -> bool:
     """사용자 소득 구간이 혜택 소득 조건을 충족하는지 확인"""
     if benefit_income_max_ratio is None:
@@ -283,7 +312,9 @@ def get_my_summary(
         has_income_cond = bool(b.income_max_ratio)
 
         if status == "locked":
-            locked_amount += amount
+            # 타이밍 잠금(출산 전/후, 임신주차)만 포함 — 지역/직업/소득 미해당은 제외
+            if is_profile_eligible(b, profile):
+                locked_amount += amount
         elif has_income_cond:
             conditional_amount += amount
         else:
