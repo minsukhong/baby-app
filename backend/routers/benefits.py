@@ -84,8 +84,12 @@ def calc_personalized_amount(benefit: Benefit, profile: Profile) -> int:
 
 def is_profile_eligible(benefit: Benefit, profile: Profile) -> bool:
     """프로필 조건(지역/직업/소득/기한만료)에 맞는지 확인.
-    타이밍 잠금(임신주차 미달, 출산 전/후 단계)은 체크하지 않음 →
+    타이밍 잠금(임신주차 미달, 출산 전→후 단계)은 포함(True).
+    출산 후 사용자의 임신 전용 혜택은 영구 제외(False).
     total_all_amount 산정 시 프로필에 해당하지 않는 혜택을 제외하는 용도."""
+    # 출산 후 사용자 → 임신 전용 혜택은 영구 해당없음
+    if profile.birth_status != "pregnant" and not benefit.applies_to_born:
+        return False
     # 직업 체크
     job = profile.job_status
     if job == "employed"      and not benefit.applies_to_employed:      return False
